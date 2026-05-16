@@ -1,24 +1,24 @@
 [submodule "sophia-message-broker"]
 	path = sophia-message-broker
 	url = https://github.com/ProjetoEntregador/sophia-message-broker.git
-	branch = main
+	branch = develop
 [submodule "sophia-ai-service"]
 	path = sophia-ai-service
 	url = https://github.com/ProjetoEntregador/sophia-ai-service.git
-	branch = main
+	branch = develop
 [submodule "sophia-frontend"]
 	path = sophia-frontend
 	url = https://github.com/ProjetoEntregador/sophia-frontend.git
-	branch = main
+	branch = develop
 [submodule "sophia-notification-service"]
 	path = sophia-notification-service
 	url = https://github.com/ProjetoEntregador/sophia-notification-service.git
-	branch = main
+	branch = develop
 [submodule "sophia-medication-service"]
 	path = sophia-medication-service
 	url = https://github.com/ProjetoEntregador/sophia-medication-service.git
-	branch = main
+	branch = develop
 [submodule "sophia-pharmacy-service"]
 	path = sophia-pharmacy-service
 	url = https://github.com/ProjetoEntregador/sophia-pharmacy-service.git
-	branch = main
+	branch = develop

@@ -1,0 +1,22 @@
+name: On push to develop
+
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (com submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Atualizar submodules para o HEAD da branch configurada
+        run: git submodule update --remote --recursive
+
+      - name: Mostrar status dos submodules
+        run: git submodule status --recursive
