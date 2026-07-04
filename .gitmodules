@@ -22,3 +22,7 @@
 	path = sophia-pharmacy-service
 	url = https://github.com/ProjetoEntregador/sophia-pharmacy-service.git
 	branch = develop
+[submodule "sophia-observability"]
+	path = sophia-observability
+	url = https://github.com/ProjetoEntregador/sophia-observability.git
+	branch = develop
