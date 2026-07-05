@@ -4,4 +4,4 @@ include:
   - path: sophia-medication-service/docker-compose.yml
   - path: sophia-notification-service/docker-compose.yml
   - path: sophia-pharmacy-service/docker-compose.yml
-  # Adicionar sophia-frontend/docker-compose.yml quando existir
+  - path: sophia-frontend/docker-compose.yml
