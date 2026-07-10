@@ -5,3 +5,4 @@ include:
   - path: sophia-notification-service/docker-compose.yml
   - path: sophia-pharmacy-service/docker-compose.yml
   - path: sophia-frontend/docker-compose.yml
+  - path: sophia-observability/docker-compose.yml
