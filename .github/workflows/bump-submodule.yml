@@ -1,0 +1,54 @@
+name: Bump submodule (disparado por repo filho)
+
+on:
+  repository_dispatch:
+    types: [submodule-update]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: bump-submodule
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do sophia (com submodules)
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+          submodules: recursive
+          fetch-depth: 0
+
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Identificar submodule alvo
+        id: target
+        run: |
+          REPO="${{ github.event.client_payload.repo }}"
+          if [ -n "$REPO" ] && git config -f .gitmodules --get "submodule.$REPO.path" >/dev/null 2>&1; then
+            echo "Submodule alvo: $REPO"
+            echo "path=$REPO" >> "$GITHUB_OUTPUT"
+          else
+            echo "Payload sem submodule valido ('$REPO'); atualizando todos."
+            echo "path=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Atualizar ponteiro para o HEAD remoto
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git submodule update --init --remote --recursive ${{ steps.target.outputs.path }}
+
+      - name: Commit e push se houver mudanca
+        run: |
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Nenhuma mudanca nos ponteiros de submodule. Nada a fazer."
+            exit 0
+          fi
+          MSG="chore: bump ${{ github.event.client_payload.repo }} @ ${{ github.event.client_payload.sha }}"
+          git commit -m "$MSG"
+          git push origin HEAD:develop
