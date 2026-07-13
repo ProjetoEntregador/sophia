@@ -25,12 +25,10 @@ jobs:
             set -euo pipefail
             cd ~/sophia
 
-            # Código atualizado (ponteiros de submódulo fixados)
             git fetch --prune origin
-            git checkout develop
-            git pull origin develop
+            git reset --hard origin/develop
             git submodule sync --recursive
-            git submodule update --init --recursive
+            git submodule update --init --recursive --force
 
             cat > sophia-ai-service/.env <<'EOF'
             STT_API_KEY=${{ secrets.STT_API_KEY }}
