@@ -19,7 +19,6 @@ jobs:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USER }}
           key: ${{ secrets.VM_SSH_KEY }}
-          script_stop: true
           command_timeout: 30m
           script: |
             set -euo pipefail
@@ -124,8 +123,10 @@ jobs:
 
             docker network inspect net1 >/dev/null 2>&1 || docker network create net1
 
-            docker compose up -d --build
+            COMPOSE_PARALLEL_LIMIT=1 docker compose build
+            docker compose up -d
 
             docker compose -f nginx/docker-compose.yml up -d --force-recreate
 
             docker image prune -f
+            docker builder prune -f --keep-storage 3gb
