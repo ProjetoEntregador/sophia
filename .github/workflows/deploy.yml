@@ -1,0 +1,132 @@
+name: Deploy para a VM (Azure)
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-vm
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          command_timeout: 30m
+          script: |
+            set -euo pipefail
+            cd ~/sophia
+
+            git fetch --prune origin
+            git reset --hard origin/develop
+            git submodule sync --recursive
+            git submodule update --init --recursive --force
+
+            cat > sophia-ai-service/.env <<'EOF'
+            STT_API_KEY=${{ secrets.STT_API_KEY }}
+            OCR_API_KEY=${{ secrets.OCR_API_KEY }}
+            CHAT_API_KEY=${{ secrets.CHAT_API_KEY }}
+            GROQ_MODEL=${{ secrets.GROQ_MODEL }}
+            GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
+            GEMINI_MODEL=${{ secrets.GEMINI_MODEL }}
+            AI_PORT=${{ secrets.AI_PORT }}
+            EOF
+
+            cat > sophia-frontend/.env <<'EOF'
+            NEXT_PUBLIC_PHARMACY_API_BASE_URL=${{ secrets.NEXT_PUBLIC_PHARMACY_API_BASE_URL }}
+            NEXT_PUBLIC_MEDICINE_API_BASE_URL=${{ secrets.NEXT_PUBLIC_MEDICINE_API_BASE_URL }}
+            PHARMACY_API_URL=${{ secrets.PHARMACY_API_URL }}
+            MEDICINE_API_URL=${{ secrets.MEDICINE_API_URL }}
+            NEXT_PUBLIC_AUTH_TOKEN_COOKIE_NAME=${{ secrets.NEXT_PUBLIC_AUTH_TOKEN_COOKIE_NAME }}
+            NEXT_PUBLIC_GOOGLE_CLIENT_ID=${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
+            EOF
+
+            cat > sophia-medication-service/.env <<'EOF'
+            MEDICATION_DB_USER=${{ secrets.MEDICATION_DB_USER }}
+            MEDICATION_DB_PASSWORD=${{ secrets.MEDICATION_DB_PASSWORD }}
+            MEDICATION_DB_NAME=${{ secrets.MEDICATION_DB_NAME }}
+            MEDICATION_DATABASE_URL=${{ secrets.MEDICATION_DATABASE_URL }}
+            PHARMACY_SERVICE_URL=${{ secrets.PHARMACY_SERVICE_URL }}
+            MESSAGE_AUDIT_QUEUE=${{ secrets.MESSAGE_AUDIT_QUEUE }}
+            MESSAGE_EXCHANGES=${{ secrets.MESSAGE_EXCHANGES }}
+            MESSAGE_AUDIT_ROUTING_KEY=${{ secrets.MESSAGE_AUDIT_ROUTING_KEY }}
+            MESSAGE_URL=${{ secrets.MESSAGE_URL }}
+            MEDICATION_PORT=${{ secrets.MEDICATION_PORT }}
+            EOF
+
+            cat > sophia-message-broker/.env <<'EOF'
+            RABBITMQ_DEFAULT_USER=${{ secrets.RABBITMQ_DEFAULT_USER }}
+            RABBITMQ_DEFAULT_PASS=${{ secrets.RABBITMQ_DEFAULT_PASS }}
+            EOF
+
+            cat > sophia-notification-service/.env <<'EOF'
+            WA_AUTH_FOLDER=${{ secrets.WA_AUTH_FOLDER }}
+            NOTIFICATION_PORT=${{ secrets.NOTIFICATION_PORT }}
+            NOTIFICATION_DB_NAME=${{ secrets.NOTIFICATION_DB_NAME }}
+            NOTIFICATION_DB_USER=${{ secrets.NOTIFICATION_DB_USER }}
+            NOTIFICATION_DB_PASSWORD=${{ secrets.NOTIFICATION_DB_PASSWORD }}
+            DB_HOST=${{ secrets.DB_HOST }}
+            DB_PORT=${{ secrets.DB_PORT }}
+            NOTIFICATION_DATABASE_URL=${{ secrets.NOTIFICATION_DATABASE_URL }}
+            AI_SERVICE_URL=${{ secrets.AI_SERVICE_URL }}
+            AI_SERVICE_TIMEOUT_MS=${{ secrets.AI_SERVICE_TIMEOUT_MS }}
+            MESSAGE_SERVICE_URL=${{ secrets.MESSAGE_SERVICE_URL }}
+            MESSAGE_EXCHANGES_NOTIFICATION=${{ secrets.MESSAGE_EXCHANGES_NOTIFICATION }}
+            MESSAGE_EXCHANGES_PHARMACY=${{ secrets.MESSAGE_EXCHANGES_PHARMACY }}
+            MESSAGE_EXCHANGES_AUDIT=${{ secrets.MESSAGE_EXCHANGES_AUDIT }}
+            MESSAGE_NOTIFICATION_QUEUE=${{ secrets.MESSAGE_NOTIFICATION_QUEUE }}
+            MESSAGE_PHARMACY_INCOMING_QUEUE=${{ secrets.MESSAGE_PHARMACY_INCOMING_QUEUE }}
+            MESSAGE_PHARMACY_OUTGOING_QUEUE=${{ secrets.MESSAGE_PHARMACY_OUTGOING_QUEUE }}
+            MESSAGE_AUDIT_QUEUE=${{ secrets.MESSAGE_AUDIT_QUEUE }}
+            MESSAGE_NOTIFICATION_ROUTING_KEY=${{ secrets.MESSAGE_NOTIFICATION_ROUTING_KEY }}
+            MESSAGE_PHARMACY_INCOMING_ROUTING_KEY=${{ secrets.MESSAGE_PHARMACY_INCOMING_ROUTING_KEY }}
+            MESSAGE_PHARMACY_OUTGOING_ROUTING_KEY=${{ secrets.MESSAGE_PHARMACY_OUTGOING_ROUTING_KEY }}
+            MESSAGE_AUDIT_ROUTING_KEY=${{ secrets.MESSAGE_AUDIT_ROUTING_KEY }}
+            EOF
+
+            cat > sophia-observability/.env <<'EOF'
+            RABBITMQ_HOST=${{ secrets.RABBITMQ_HOST }}
+            RABBITMQ_PORT=${{ secrets.RABBITMQ_PORT }}
+            RABBITMQ_USER=${{ secrets.RABBITMQ_USER }}
+            RABBITMQ_PASSWORD=${{ secrets.RABBITMQ_PASSWORD }}
+            RABBITMQ_QUEUE=${{ secrets.RABBITMQ_QUEUE }}
+            POSTGRES_HOST=${{ secrets.POSTGRES_HOST }}
+            POSTGRES_PORT=${{ secrets.POSTGRES_PORT }}
+            POSTGRES_USER=${{ secrets.POSTGRES_USER }}
+            POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+            POSTGRES_DB=${{ secrets.POSTGRES_DB }}
+            GRAFANA_ADMIN_USER=${{ secrets.GRAFANA_ADMIN_USER }}
+            GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD }}
+            EOF
+
+            cat > sophia-pharmacy-service/.env <<'EOF'
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
+            MAIL_SENDER_USERNAME=${{ secrets.MAIL_SENDER_USERNAME }}
+            MAIL_APP_PASSWORD=${{ secrets.MAIL_APP_PASSWORD }}
+            DATASOURCE_URL=${{ secrets.DATASOURCE_URL }}
+            DATASOURCE_USERNAME=${{ secrets.DATASOURCE_USERNAME }}
+            DATASOURCE_PASSWORD=${{ secrets.DATASOURCE_PASSWORD }}
+            FRONTEND_URL=${{ secrets.FRONTEND_URL }}
+            MEDICATION_URL=${{ secrets.MEDICATION_URL }}
+            CORS_ALLOWED_ORIGINS=${{ secrets.CORS_ALLOWED_ORIGINS }}
+            EOF
+
+            chmod 777 sophia-*/logs 2>/dev/null || true
+
+            docker network inspect net1 >/dev/null 2>&1 || docker network create net1
+
+            COMPOSE_PARALLEL_LIMIT=1 docker compose build
+            docker compose up -d
+
+            docker compose -f nginx/docker-compose.yml up -d --force-recreate
+
+            docker image prune -f
+            docker builder prune -f --keep-storage 3gb
