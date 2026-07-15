@@ -7,7 +7,7 @@ on:
 
 concurrency:
   group: deploy-vm
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   deploy:
@@ -124,7 +124,16 @@ jobs:
             docker network inspect net1 >/dev/null 2>&1 || docker network create net1
 
             COMPOSE_PARALLEL_LIMIT=1 docker compose build
-            docker compose up -d
+
+            if ! docker compose up -d --remove-orphans; then
+              echo "docker compose up falhou (provável conflito de nome de container). Limpando e recriando o stack..."
+              docker compose down --remove-orphans || true
+
+              names=$(docker compose config 2>/dev/null \
+                | awk '/^[[:space:]]*container_name:/ {gsub(/["'"'"']/,"",$2); print $2}')
+              [ -n "$names" ] && docker rm -f $names 2>/dev/null || true
+              docker compose up -d --remove-orphans
+            fi
 
             docker compose -f nginx/docker-compose.yml up -d --force-recreate
 
